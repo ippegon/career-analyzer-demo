@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>キャリア面談分析 — 岡田様</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<style>
+  :root {
+    --primary: #67B8D8;
+    --primary-dark: #4A9DBF;
+    --primary-light: #A8D8EA;
+    --bg: #F5FAFE;
+    --card-bg: #FFFFFF;
+    --text: #2D3748;
+    --text-sub: #718096;
+    --border: #D0E8F2;
+    --accent: #E8F4F8;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.7;
+  }
+  .header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white; padding: 32px 40px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .header h1 { font-size: 24px; font-weight: 700; }
+  .header .meta { font-size: 14px; opacity: 0.85; }
+  .tabs {
+    background: white; border-bottom: 1px solid var(--border);
+    display: flex; gap: 0; padding: 0 40px; overflow-x: auto;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .tab {
+    padding: 14px 24px; font-size: 14px; font-weight: 500; color: var(--text-sub);
+    cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: all 0.2s;
+  }
+  .tab:hover { color: var(--primary-dark); }
+  .tab.active { color: var(--primary-dark); border-bottom-color: var(--primary); font-weight: 600; }
+  .content { padding: 32px 40px; max-width: 1200px; margin: 0 auto; }
+  .section { display: none; }
+  .section.active { display: block; }
+  .card {
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 28px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .card h3 {
+    font-size: 16px; font-weight: 600; color: var(--primary-dark);
+    margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid var(--accent);
+  }
+  .card h4 { font-size: 14px; font-weight: 600; color: var(--text); margin: 16px 0 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th {
+    background: var(--accent); color: var(--primary-dark); font-weight: 600;
+    text-align: left; padding: 10px 14px; border: 1px solid var(--border);
+  }
+  td { padding: 10px 14px; border: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: #FAFCFE; }
+  .quote {
+    background: var(--accent); border-left: 4px solid var(--primary);
+    padding: 16px 20px; margin: 12px 0; border-radius: 0 8px 8px 0;
+    font-size: 14px; line-height: 1.8; color: var(--text);
+  }
+  .badge {
+    display: inline-block; background: var(--primary); color: white;
+    font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 100px;
+    margin-right: 6px; margin-bottom: 4px;
+  }
+  .badge.warn { background: #E8A848; }
+  .badge.ok { background: #5BB88A; }
+  .ng-row { color: #C53030; }
+  .ok-row { color: #2F855A; }
+  ul { padding-left: 20px; }
+  li { margin-bottom: 6px; font-size: 14px; }
+  .copy-btn {
+    background: var(--primary); color: white; border: none; padding: 8px 16px;
+    border-radius: 6px; font-size: 13px; cursor: pointer; float: right; transition: background 0.2s;
+  }
+  .copy-btn:hover { background: var(--primary-dark); }
+  .stars { color: #D69E2E; letter-spacing: 2px; }
+  .comparison-table .ng { background: #FFF5F5; }
+  .comparison-table .ok { background: #F0FFF4; }
+
+  /* Mindmap */
+  #mindmap-svg { width: 100%; height: 750px; background: white; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .mm-link { fill: none; stroke: var(--primary-light); stroke-width: 1.8; }
+  .mm-node circle { fill: var(--primary); stroke: white; stroke-width: 2; }
+  .mm-node text { font-size: 13px; fill: var(--text); font-family: inherit; }
+  .mm-node.mm-root circle { fill: var(--primary-dark); r: 8; }
+  .mm-node.mm-root text { font-size: 16px; font-weight: 700; }
+  .mm-node.mm-branch > circle { fill: var(--primary); }
+  .mm-node.mm-branch > text { font-weight: 600; font-size: 13.5px; }
+  .mm-node.mm-leaf circle { fill: var(--primary-light); }
+  .mm-node.mm-clickable { cursor: pointer; }
+  .mm-node.mm-collapsed circle { fill: var(--primary-dark); stroke: var(--primary-light); }
+
+  @media print {
+    .tabs, .copy-btn { display: none; }
+    .section { display: block !important; page-break-inside: avoid; }
+    body { background: white; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>キャリア面談分析レポート</h1>
+    <div class="meta">候補者: 岡田様 ｜ 面談日: 2026年5月 ｜ 面談時間: 約56分</div>
+  </div>
+  <button class="copy-btn" onclick="window.print()">印刷 / PDF</button>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab(0)">マインドマップ</div>
+  <div class="tab" onclick="showTab(1)">志望動機・転職理由</div>
+  <div class="tab" onclick="showTab(2)">推薦文</div>
+  <div class="tab" onclick="showTab(3)">面接対策</div>
+  <div class="tab" onclick="showTab(4)">スキル・経験</div>
+  <div class="tab" onclick="showTab(5)">マッチング要素</div>
+</div>
+
+<div class="content">
+
+  <!-- TAB 0: マインドマップ -->
+  <div class="section active" id="sec-0">
+    <div class="card" style="padding:16px;">
+      <h3 style="margin-bottom:12px;">候補者マインドマップ <span style="font-size:12px;color:var(--text-sub);font-weight:400;">（クリックで展開/折りたたみ）</span></h3>
+      <svg id="mindmap-svg"></svg>
+    </div>
+  </div>
+
+  <!-- TAB 1: 志望動機・転職理由 -->
+  <div class="section" id="sec-1">
+    <div class="card">
+      <h3>転職理由（推奨表現）</h3>
+      <button class="copy-btn" onclick="copyText('transfer-reason')">コピー</button>
+      <div id="transfer-reason">
+        <div class="quote">小学校教諭として5年間勤務し、子どもたちの成長に携わるやりがいを感じておりましたが、出産を機に退職いたしました。子どもが幼稚園に入り生活が安定してきた今、改めて長期的にキャリアを築いていきたいと考えております。前職では日常的にPCを活用しており、データ処理や資料作成にも携わっていたことから、IT分野への関心が高まり、専門性を身につけながら成長できる環境を求めて転職活動を始めました。</div>
+      </div>
+      <h4>NG表現との対比</h4>
+      <table class="comparison-table">
+        <tr><th style="width:50%">NG表現</th><th>推奨表現</th></tr>
+        <tr><td class="ng">夫の転勤で辞めざるを得なかった</td><td class="ok">家庭環境の変化を経て、改めてキャリアを見つめ直す機会を得ました</td></tr>
+        <tr><td class="ng">事務だと将来性がないと聞いた</td><td class="ok">より専門性の高い分野で長期的にスキルを磨いていきたいと考えています</td></tr>
+        <tr><td class="ng">在宅で働きたい</td><td class="ok">将来的にはリモートワーク等も視野に入れつつ、まずは現場で実力をつけたいです</td></tr>
+        <tr><td class="ng">子どもがいるので融通が利く仕事がいい</td><td class="ok">フルタイムで業務にコミットしつつ、長く安定して働ける環境を重視しています</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>志望動機テンプレート（企業タイプ別）</h3>
+      <h4>IT系（アデコ・リクルートスタッフィング等）</h4>
+      <button class="copy-btn" onclick="copyText('motiv-it')">コピー</button>
+      <div id="motiv-it">
+        <div class="quote">教育現場で培った「相手の困りごとを聞き取り、わかりやすく解決に導く力」を活かし、ITサポートの分野で貢献したいと考えております。大学では工学部で統計学を学んでおり、数字やシステムへの抵抗感はありません。未経験ではありますが、御社の充実した研修制度のもとでITの基礎から学び、資格取得にも積極的に取り組みながら、将来的にはインフラやネットワーク分野でも活躍できる人材を目指してまいります。</div>
+      </div>
+      <h4>通信系（ブレクサコミュニケーションズ等）</h4>
+      <button class="copy-btn" onclick="copyText('motiv-telecom')">コピー</button>
+      <div id="motiv-telecom">
+        <div class="quote">通信インフラという社会基盤を支えるお仕事に魅力を感じております。教員時代に培った正確なデータ管理能力やコミュニケーション力を活かし、基地局関連のサポート業務に貢献したいと考えております。御社はプライム上場企業としての安定した基盤があり、長期的にキャリアを築いていける環境に大変魅力を感じております。</div>
+      </div>
+      <h4>CAD系</h4>
+      <button class="copy-btn" onclick="copyText('motiv-cad')">コピー</button>
+      <div id="motiv-cad">
+        <div class="quote">大学の工学部で学んだ論理的思考力と、教員として5年間培った正確性・丁寧さを活かし、CADオペレーターとして建築分野に貢献したいと考えております。設計図面のデジタル化という、AIには代替されにくい専門技術を身につけることで、長期的に価値を発揮できるキャリアを築きたいと考えております。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: 推薦文 -->
+  <div class="section" id="sec-2">
+    <div class="card">
+      <h3>推薦文（簡潔版 — メール用）</h3>
+      <button class="copy-btn" onclick="copyText('rec-brief')">コピー</button>
+      <div id="rec-brief">
+        <div class="quote">岡田様をご紹介いたします。小学校教諭として5年間の勤務実績があり、出産を機に退職後、現在復職活動中です。工学部卒・簿記3級保有で、数字やPC操作への適性が高く、学習意欲も非常に旺盛な方です。お子様（3歳）がいらっしゃいますがフルタイム勤務を希望されており、長期的にキャリアを築いていきたいという強い意志をお持ちです。コツコツと努力を積み重ねられるお人柄で、研修期間中の資格取得にも前向きです。京都・大阪エリアで通勤1時間以内、19時までにお迎え可能な勤務条件を希望されています。</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>推薦文（詳細版 — 推薦状用）</h3>
+      <button class="copy-btn" onclick="copyText('rec-detail')">コピー</button>
+      <div id="rec-detail">
+        <h4>候補者概要</h4>
+        <p style="font-size:14px;margin-bottom:12px;">岡田様は小学校教諭として5年間勤務された後、ご家庭の事情（配偶者の転勤・出産）により退職されました。お子様が幼稚園に入園し生活が安定した現在、本格的なキャリア復帰を目指して活動されています。現在、マンパワー社より無期雇用派遣（事務職）の内定を得ていますが、将来的なキャリアの発展性を重視し、IT系の職種も検討されています。</p>
+        <h4>推薦ポイント</h4>
+        <ul>
+          <li><strong>高い学習能力と継続力</strong>: 工学部卒業、教員免許取得、簿記3級取得と、体系的に学び成果を出すことができる方です。</li>
+          <li><strong>コミュニケーション能力</strong>: 5年間の教員経験で、児童・保護者・同僚との多様なコミュニケーションを行ってきました。</li>
+          <li><strong>長期就業への強い意志</strong>: 「今後は退職を考えておらず、長くキャリアを積みたい」と明確に述べています。</li>
+        </ul>
+        <h4>懸念点・フォロー事項</h4>
+        <ul>
+          <li>IT業界未経験のため、研修期間が必要（1〜2ヶ月）</li>
+          <li>お子様の急な体調不良時の早退・欠勤の可能性あり（夫との分担体制あり）</li>
+          <li>第2子を将来的に検討中</li>
+          <li>19時までにお迎え必要（通勤1時間圏内を前提に18時退勤が理想）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: 面接対策 -->
+  <div class="section" id="sec-3">
+    <div class="card">
+      <h3>想定質問と回答の方向性</h3>
+      <button class="copy-btn" onclick="copyText('qa-table')">コピー</button>
+      <div id="qa-table">
+        <table>
+          <tr><th style="width:5%">#</th><th style="width:35%">想定質問</th><th>回答の方向性</th></tr>
+          <tr><td>1</td><td>教員を辞めた理由は？</td><td>出産・家庭環境の変化を理由に。「教育にやりがいを感じていたが、家庭との両立が難しかった」とポジティブに</td></tr>
+          <tr><td>2</td><td>なぜIT業界を選んだのですか？</td><td>将来性・リモートの可能性・専門スキルの習得。工学部出身で数字やシステムへの抵抗がない点をアピール</td></tr>
+          <tr><td>3</td><td>IT関連の経験やスキルは？</td><td>教員時代のPC活用経験。大学での統計学。「経験はないが学ぶ意欲と素養がある」</td></tr>
+          <tr><td>4</td><td>お子様の急な体調不良時は？</td><td>夫との分担体制・預かり保育の体制。「業務に支障が出ないよう準備している」</td></tr>
+          <tr><td>5</td><td>残業は可能ですか？</td><td>フルタイム勤務可能。お迎え19時を考慮し多少の残業は対応可。恒常的な長時間残業は難しい</td></tr>
+          <tr><td>6</td><td>長く働けますか？</td><td>「退職を考えておらず、スキルを身につけながら長期的に貢献したい」。退職は本人都合でない点を強調</td></tr>
+          <tr><td>7</td><td>3年後・5年後のビジョンは？</td><td>基礎的なIT資格を取得→3年以内にITサポート実務経験→将来はインフラ・NW分野にも挑戦</td></tr>
+          <tr><td>8</td><td>教員経験をどう活かせる？</td><td>「わかりやすく説明する力」「ヒアリング力」「正確なドキュメント管理力」</td></tr>
+          <tr><td>9</td><td>希望年収は？</td><td>「研修スタートと理解している。御社の規定に従いつつ、長期的にスキルアップに見合う評価を」</td></tr>
+          <tr><td>10</td><td>他社の選考状況は？</td><td>「同業界のIT系企業を数社検討中。長く働ける環境を重視して慎重に選んでいます」</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <h3>転職理由の伝え方</h3>
+      <h4>NGワード</h4>
+      <ul>
+        <li class="ng-row">「在宅で働きたい」→ 入社直後にリモート希望と受け取られる</li>
+        <li class="ng-row">「事務はつまらない」→ ネガティブ</li>
+        <li class="ng-row">「子どもがいるので無理できない」→ 制約ばかり伝わる</li>
+        <li class="ng-row">「他のエージェントでは事務しか紹介されなかった」→ 消去法に聞こえる</li>
+      </ul>
+      <h4>推奨フレーズ</h4>
+      <ul>
+        <li class="ok-row">「専門性のあるスキルを身につけて長期的にキャリアを築きたい」</li>
+        <li class="ok-row">「教育現場で培ったコミュニケーション力をIT分野で活かしたい」</li>
+        <li class="ok-row">「工学部出身として、技術的な分野に改めてチャレンジしたい」</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>逆質問の候補</h3>
+      <ul>
+        <li>「研修ではどのような資格取得を目指す方が多いですか？」</li>
+        <li>「入社後3年程度でどのようなキャリアパスを歩まれる方が多いですか？」</li>
+        <li>「お子様のいる社員の方はどのような働き方をされていますか？」</li>
+        <li>「配属先はどのように決まりますか？希望は考慮されますか？」</li>
+        <li>「最初のプロジェクトに入るまでの期間はどのくらいですか？」</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>印象を良くするためのアドバイス</h3>
+      <ul>
+        <li><strong>教員経験を武器に</strong>: 「人前で話すこと」「分かりやすく説明すること」は最大の強み</li>
+        <li><strong>学ぶ姿勢を具体的に</strong>: 「ITパスポートの勉強を始めています」など、行動を示す</li>
+        <li><strong>子育てをプラスに</strong>: 「限られた時間で効率的に成果を出す意識が身についた」と転換</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- TAB 4: スキル・経験 -->
+  <div class="section" id="sec-4">
+    <div class="card">
+      <h3>職歴</h3>
+      <table>
+        <tr><th>期間</th><th>企業名</th><th>業界</th><th>職種</th><th>主な業務</th><th>習得スキル</th></tr>
+        <tr><td>約5年間</td><td>公立小学校</td><td>教育</td><td>小学校教諭</td><td>授業運営・テスト作成・成績管理・保護者対応</td><td>コミュニケーション力・資料作成・データ管理</td></tr>
+        <tr><td>約3年間</td><td>—</td><td>—</td><td>専業主婦</td><td>育児・家事</td><td>簿記3級取得・時間管理</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>スキルサマリー</h3>
+      <table>
+        <tr><th style="width:25%">カテゴリ</th><th>スキル</th></tr>
+        <tr><td><span class="badge">業務スキル</span></td><td>資料作成（Word/Excel/PowerPoint）・データ入力・成績処理・スケジュール管理</td></tr>
+        <tr><td><span class="badge">対人スキル</span></td><td>プレゼンテーション・ヒアリング・わかりやすい説明・保護者対応</td></tr>
+        <tr><td><span class="badge ok">資格</span></td><td>教員免許（小学校）・簿記3級</td></tr>
+        <tr><td><span class="badge">学歴関連</span></td><td>工学部卒（統計学）・数字処理・論理的思考</td></tr>
+        <tr><td><span class="badge">IT関連</span></td><td>Excel基本操作・PC基本操作（教育現場でのICT活用経験あり）</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 5: マッチング要素 -->
+  <div class="section" id="sec-5">
+    <div class="card">
+      <h3>求人マッチング要素</h3>
+      <table>
+        <tr><th style="width:25%">項目</th><th>内容</th></tr>
+        <tr><td>希望年収</td><td>300万円以上</td></tr>
+        <tr><td>最低年収</td><td>約240万円（マンパワー内定額: 月給約20万×12＋賞与1ヶ月≒260万）</td></tr>
+        <tr><td>希望勤務地</td><td>京都市内・大阪市内（自宅から通勤1時間以内）</td></tr>
+        <tr><td>希望業界</td><td>IT（第1希望）、通信、建築CAD</td></tr>
+        <tr><td>希望職種</td><td>ITサポート事務・ヘルプデスク・CADオペレーター</td></tr>
+        <tr><td>NG条件</td><td><span class="badge warn">営業職</span><span class="badge warn">シフト制</span><span class="badge warn">夜勤あり</span><span class="badge warn">長時間残業</span></td></tr>
+        <tr><td>勤務形態</td><td>フルタイム（将来的に在宅・フレックス希望）</td></tr>
+        <tr><td>勤務時間の制約</td><td>19時までにお迎え必要（18時退勤が理想）</td></tr>
+        <tr><td>入社希望時期</td><td>6月〜（マンパワー内定は6月1日入社前提）</td></tr>
+        <tr><td>重視ポイント</td><td>①働き方の柔軟性 ②スキル・やりがい ③将来的なキャリアアップ</td></tr>
+        <tr><td>研修制度</td><td>必須（IT未経験のため充実した研修がある企業が望ましい）</td></tr>
+        <tr><td>その他</td><td>第2子検討中・ママさん社員が多い環境が望ましい・有給取得しやすい環境</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>マッチ度が高い求人タイプ</h3>
+      <table>
+        <tr><th style="width:12%">優先度</th><th style="width:35%">求人タイプ</th><th>理由</th></tr>
+        <tr><td class="stars">★★★</td><td>IT系無期雇用派遣（ITサポート事務）</td><td>研修充実・将来的にリモート可・スキルアップ可能</td></tr>
+        <tr><td class="stars">★★★</td><td>通信系サポート事務</td><td>ママさん多い・残業少なめ・安定企業</td></tr>
+        <tr><td class="stars">★★☆</td><td>CADオペレーター（未経験可）</td><td>AI代替されにくい・将来リモート可・工学部との親和性</td></tr>
+        <tr><td class="stars">★☆☆</td><td>一般事務（無期雇用派遣）</td><td>未経験OKだが将来性に欠ける・在宅不可</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>現在の選考状況</h3>
+      <table>
+        <tr><th>企業名</th><th>状況</th><th>期限</th></tr>
+        <tr><td>マンパワー</td><td><span class="badge warn">内定</span> M社員 / 無期雇用派遣・事務</td><td>5月20日 承諾期限</td></tr>
+        <tr><td>アデコ</td><td><span class="badge">書類提出予定</span></td><td>—</td></tr>
+        <tr><td>リクルートスタッフィング</td><td><span class="badge">書類提出予定</span></td><td>—</td></tr>
+        <tr><td>ブレクサコミュニケーションズ</td><td><span class="badge">書類提出予定</span></td><td>—</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(i) {
+  document.querySelectorAll('.tab').forEach((t,j) => t.classList.toggle('active', j===i));
+  document.querySelectorAll('.section').forEach((s,j) => s.classList.toggle('active', j===i));
+}
+function copyText(id) {
+  const text = document.getElementById(id).innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById(id).parentElement.querySelector('.copy-btn');
+    const o = btn.textContent; btn.textContent = 'コピーしました'; btn.style.background = '#5BB88A';
+    setTimeout(() => { btn.textContent = o; btn.style.background = ''; }, 1500);
+  });
+}
+
+// === D3 Mindmap ===
+const data = {
+  name: "岡田様", children: [
+    { name: "職歴", children: [
+      { name: "公立小学校（約5年）", children: [
+        { name: "基本情報", children: [
+          { name: "職種: 小学校教諭" },
+          { name: "雇用形態: 正規採用" },
+          { name: "在籍期間: 約5年" }
+        ]},
+        { name: "担当業務", children: [
+          { name: "授業・学級経営", children: [
+            { name: "教科指導・授業設計" },
+            { name: "クラス運営・生活指導" }
+          ]},
+          { name: "テスト・成績処理", children: [
+            { name: "テスト作成（Excel使用）" },
+            { name: "成績データ入力・集計" },
+            { name: "通知表作成" }
+          ]},
+          { name: "保護者対応", children: [
+            { name: "個人面談の実施" },
+            { name: "連絡帳・電話対応" }
+          ]},
+          { name: "校務分掌・資料作成", children: [
+            { name: "Word/PowerPointで資料作成" },
+            { name: "学校行事の企画・運営" }
+          ]}
+        ]},
+        { name: "身についた力", children: [
+          { name: "対人スキル", children: [
+            { name: "わかりやすく説明する力" },
+            { name: "相手の困りごとを聞き取る力" },
+            { name: "多様な立場の人との対話" }
+          ]},
+          { name: "業務スキル", children: [
+            { name: "マルチタスク管理" },
+            { name: "正確なデータ処理" },
+            { name: "スケジュール管理" }
+          ]}
+        ]},
+        { name: "退職の経緯", children: [
+          { name: "1回目: 夫の転勤により退職" },
+          { name: "2回目: 出産を機に退職" },
+          { name: "本人都合ではない（教育への意欲あり）" }
+        ]}
+      ]},
+      { name: "ブランク（約3年）", children: [
+        { name: "育児に専念" },
+        { name: "自己学習", children: [
+          { name: "簿記3級を取得" },
+          { name: "数字・会計への関心" }
+        ]}
+      ]}
+    ]},
+    { name: "転職理由", children: [
+      { name: "キャリアへの意志", children: [
+        { name: "長期就業", children: [
+          { name: "今後は退職を考えていない" },
+          { name: "1社で長く続けたい" }
+        ]},
+        { name: "成長意欲", children: [
+          { name: "スキルを伸ばしたい" },
+          { name: "やりがいのある仕事がしたい" },
+          { name: "資格取得にも前向き" }
+        ]}
+      ]},
+      { name: "事務職への懸念", children: [
+        { name: "働き方の制約", children: [
+          { name: "在宅・フレックスがほぼ不可" },
+          { name: "出社必須が長期的にきつい" }
+        ]},
+        { name: "キャリアの天井", children: [
+          { name: "スキルアップの限界（データ入力止まり）" },
+          { name: "給与が上がりにくい" },
+          { name: "転職時も事務経験2年以上が必須" }
+        ]}
+      ]},
+      { name: "IT方面への関心", children: [
+        { name: "適性", children: [
+          { name: "工学部出身で数字に強い" },
+          { name: "統計学の基礎がある" },
+          { name: "PC操作に抵抗なし" }
+        ]},
+        { name: "将来性", children: [
+          { name: "3〜5年でリモート可能" },
+          { name: "年収アップの見込み（3年で+100万）" },
+          { name: "AIに代替されにくいサポート職" }
+        ]}
+      ]}
+    ]},
+    { name: "スキル・資格", children: [
+      { name: "保有資格", children: [
+        { name: "教員免許（小学校）", children: [
+          { name: "正規採用で5年間勤務実績あり" }
+        ]},
+        { name: "簿記3級", children: [
+          { name: "育児中に独学で取得" },
+          { name: "2級取得も視野に" }
+        ]}
+      ]},
+      { name: "学歴・専攻", children: [
+        { name: "大学: 工学部卒", children: [
+          { name: "統計学を専攻" },
+          { name: "数字・関数に苦手意識なし" },
+          { name: "論理的思考の基盤あり" }
+        ]}
+      ]},
+      { name: "PCスキル", children: [
+        { name: "日常的に使用", children: [
+          { name: "Excel: 基本操作・関数" },
+          { name: "Word: 文書作成" },
+          { name: "PowerPoint: 資料作成" }
+        ]},
+        { name: "教育現場でのICT活用経験" }
+      ]},
+      { name: "今後取得を検討", children: [
+        { name: "ITパスポート" },
+        { name: "基本情報技術者" },
+        { name: "簿記2級" }
+      ]}
+    ]},
+    { name: "希望条件", children: [
+      { name: "収入", children: [
+        { name: "希望年収: 300万円〜" },
+        { name: "最低ライン: 240万円程度", children: [
+          { name: "マンパワー内定額: 月給約20万" },
+          { name: "賞与1ヶ月分 → 年収約260万" }
+        ]}
+      ]},
+      { name: "勤務地・通勤", children: [
+        { name: "エリア", children: [
+          { name: "京都市内" },
+          { name: "大阪市内" },
+          { name: "関西エリア全般" }
+        ]},
+        { name: "通勤: 自宅から1時間以内" }
+      ]},
+      { name: "働き方", children: [
+        { name: "現在の希望", children: [
+          { name: "フルタイム勤務" },
+          { name: "18時退勤が理想（19時迎え）" },
+          { name: "多少の残業は対応可" }
+        ]},
+        { name: "将来的な希望", children: [
+          { name: "在宅勤務" },
+          { name: "フレックスタイム" },
+          { name: "3〜5年後を見据えている" }
+        ]}
+      ]},
+      { name: "NG条件", children: [
+        { name: "営業職（残業・シフトが合わない）" },
+        { name: "シフト制・夜勤" },
+        { name: "恒常的な長時間残業" }
+      ]}
+    ]},
+    { name: "家庭状況", children: [
+      { name: "子ども", children: [
+        { name: "第1子", children: [
+          { name: "3歳（幼稚園 年少）" },
+          { name: "預かり保育を利用中" },
+          { name: "19時までにお迎え必須" }
+        ]},
+        { name: "第2子を将来的に検討中", children: [
+          { name: "育児期間がさらに5〜10年続く見込み" },
+          { name: "柔軟な働き方の重要性が増す" }
+        ]}
+      ]},
+      { name: "育児体制", children: [
+        { name: "分担", children: [
+          { name: "夫と分担予定" },
+          { name: "ただし自分が主体で対応" },
+          { name: "常に迎えに行ける余裕を持ちたい" }
+        ]},
+        { name: "リスク", children: [
+          { name: "急な発熱での早退・欠勤" },
+          { name: "小学校低学年は帰宅が早い" }
+        ]}
+      ]}
+    ]},
+    { name: "人物像", children: [
+      { name: "性格特性", children: [
+        { name: "真面目・コツコツ型", children: [
+          { name: "教員免許・簿記を独力で取得" },
+          { name: "地道な学習を継続できる" }
+        ]},
+        { name: "学習意欲が高い", children: [
+          { name: "IT分野の勉強にも前向き" },
+          { name: "資格取得に意欲的" }
+        ]},
+        { name: "慎重・比較型", children: [
+          { name: "複数エージェントで情報収集" },
+          { name: "納得してから判断したい" }
+        ]}
+      ]},
+      { name: "キャリア観", children: [
+        { name: "長期的視点で考えている" },
+        { name: "専門性を身につけたい" },
+        { name: "最短距離を求めつつ現実的" },
+        { name: "働き方とやりがいの両立を重視" }
+      ]}
+    ]},
+    { name: "選考状況", children: [
+      { name: "マンパワー", children: [
+        { name: "状況: 内定あり", children: [
+          { name: "M社員（無期雇用派遣）" },
+          { name: "事務職" },
+          { name: "月給約20万 / 賞与1ヶ月" }
+        ]},
+        { name: "承諾期限: 5月20日", children: [
+          { name: "6月1日入社予定" },
+          { name: "1回延長済み" },
+          { name: "さらに5/29まで延長を相談予定" }
+        ]}
+      ]},
+      { name: "今回提案の企業", children: [
+        { name: "アデコ（ITサポート事務）" },
+        { name: "リクルートスタッフィング" },
+        { name: "ブレクサコミュニケーションズ", children: [
+          { name: "通信系サポート事務" },
+          { name: "9:30-18:00 / 残業少" },
+          { name: "ママさん多い環境" },
+          { name: "プライム上場" }
+        ]}
+      ]},
+      { name: "スケジュール", children: [
+        { name: "今週中に書類提出" },
+        { name: "木・金で面接（面接1回の企業が多い）" },
+        { name: "5/20までに比較・意思決定" }
+      ]}
+    ]}
+  ]
+};
+
+const svg = d3.select("#mindmap-svg");
+const width = svg.node().getBoundingClientRect().width || 1100;
+const height = 750;
+svg.attr("viewBox", `0 0 ${width} ${height}`);
+
+const g = svg.append("g");
+
+// ズーム
+svg.call(d3.zoom().scaleExtent([0.3, 3]).on("zoom", (e) => g.attr("transform", e.transform)));
+
+const root = d3.hierarchy(data);
+root.x0 = height / 2;
+root.y0 = 100;
+
+// 初期状態: 3階層まで展開（depth 0,1,2,3 を表示、4以降は折りたたみ）
+root.descendants().forEach(d => {
+  if (d.depth >= 3 && d.children) { d._children = d.children; d.children = null; }
+});
+
+const treeLayout = d3.tree().nodeSize([22, 160]);
+
+function update(source) {
+  treeLayout(root);
+  const nodes = root.descendants();
+  const links = root.links();
+
+  // 上下位置調整
+  let minY = Infinity, maxY = -Infinity;
+  nodes.forEach(d => { if (d.x < minY) minY = d.x; if (d.x > maxY) maxY = d.x; });
+  const offsetX = height / 2 - (minY + maxY) / 2;
+  const offsetY = 120;
+
+  // リンク
+  const link = g.selectAll(".mm-link").data(links, d => d.target.data.name + d.target.depth);
+  link.enter().append("path").attr("class", "mm-link")
+    .merge(link).transition().duration(400)
+    .attr("d", d => {
+      const sx = d.source.y + offsetY, sy = d.source.x + offsetX;
+      const tx = d.target.y + offsetY, ty = d.target.x + offsetX;
+      return `M${sx},${sy} C${(sx+tx)/2},${sy} ${(sx+tx)/2},${ty} ${tx},${ty}`;
+    });
+  link.exit().remove();
+
+  // ノード
+  const node = g.selectAll(".mm-node").data(nodes, d => d.data.name + d.depth);
+  const nodeEnter = node.enter().append("g").attr("class", d => {
+    let c = "mm-node";
+    if (d.depth === 0) c += " mm-root";
+    else if (d.depth === 1) c += " mm-branch";
+    else if (!d.children && !d._children) c += " mm-leaf";
+    if (d.children || d._children) c += " mm-clickable";
+    if (d._children) c += " mm-collapsed";
+    return c;
+  });
+  nodeEnter.append("circle").attr("r", d => d.depth === 0 ? 8 : d.depth === 1 ? 6 : 4);
+  nodeEnter.append("text").attr("dy", d => d.depth === 0 ? -14 : 4)
+    .attr("x", d => d.depth === 0 ? 0 : 12)
+    .attr("text-anchor", d => d.depth === 0 ? "middle" : "start")
+    .text(d => d.data.name);
+
+  const nodeUpdate = nodeEnter.merge(node);
+  nodeUpdate.transition().duration(400)
+    .attr("transform", d => `translate(${d.y + offsetY},${d.x + offsetX})`);
+  nodeUpdate.attr("class", d => {
+    let c = "mm-node";
+    if (d.depth === 0) c += " mm-root";
+    else if (d.depth === 1) c += " mm-branch";
+    else if (!d.children && !d._children) c += " mm-leaf";
+    if (d.children || d._children) c += " mm-clickable";
+    if (d._children) c += " mm-collapsed";
+    return c;
+  });
+  node.exit().remove();
+
+  // クリックで展開/折りたたみ
+  nodeUpdate.on("click", (event, d) => {
+    if (d._children) { d.children = d._children; d._children = null; }
+    else if (d.children) { d._children = d.children; d.children = null; }
+    g.selectAll(".mm-node").remove();
+    g.selectAll(".mm-link").remove();
+    update(d);
+  });
+}
+
+update(root);
+
+// 初期位置を中央寄せ
+setTimeout(() => {
+  const bbox = g.node().getBBox();
+  const s = Math.min(width / (bbox.width + 60), height / (bbox.height + 60), 1);
+  const tx = (width - bbox.width * s) / 2 - bbox.x * s;
+  const ty = (height - bbox.height * s) / 2 - bbox.y * s;
+  svg.transition().duration(500).call(
+    d3.zoom().scaleExtent([0.3, 3]).on("zoom", (e) => g.attr("transform", e.transform))
+      .transform, d3.zoomIdentity.translate(tx, ty).scale(s)
+  );
+}, 500);
+</script>
+</body>
+</html>
