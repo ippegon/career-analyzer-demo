@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>キャリア面談分析 — 片野様</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<style>
+  :root {
+    --primary: #67B8D8;
+    --primary-dark: #4A9DBF;
+    --primary-light: #A8D8EA;
+    --bg: #F5FAFE;
+    --card-bg: #FFFFFF;
+    --text: #2D3748;
+    --text-sub: #718096;
+    --border: #D0E8F2;
+    --accent: #E8F4F8;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.7;
+  }
+  .header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white; padding: 32px 40px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .header h1 { font-size: 24px; font-weight: 700; }
+  .header .meta { font-size: 14px; opacity: 0.85; }
+  .tabs {
+    background: white; border-bottom: 1px solid var(--border);
+    display: flex; gap: 0; padding: 0 40px; overflow-x: auto;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .tab {
+    padding: 14px 24px; font-size: 14px; font-weight: 500; color: var(--text-sub);
+    cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: all 0.2s;
+  }
+  .tab:hover { color: var(--primary-dark); }
+  .tab.active { color: var(--primary-dark); border-bottom-color: var(--primary); font-weight: 600; }
+  .content { padding: 32px 40px; max-width: 1200px; margin: 0 auto; }
+  .section { display: none; }
+  .section.active { display: block; }
+  .card {
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 28px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .card h3 {
+    font-size: 16px; font-weight: 600; color: var(--primary-dark);
+    margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid var(--accent);
+  }
+  .card h4 { font-size: 14px; font-weight: 600; color: var(--text); margin: 16px 0 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th {
+    background: var(--accent); color: var(--primary-dark); font-weight: 600;
+    text-align: left; padding: 10px 14px; border: 1px solid var(--border);
+  }
+  td { padding: 10px 14px; border: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: #FAFCFE; }
+  .quote {
+    background: var(--accent); border-left: 4px solid var(--primary);
+    padding: 16px 20px; margin: 12px 0; border-radius: 0 8px 8px 0;
+    font-size: 14px; line-height: 1.8; color: var(--text);
+  }
+  .badge {
+    display: inline-block; background: var(--primary); color: white;
+    font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 100px;
+    margin-right: 6px; margin-bottom: 4px;
+  }
+  .badge.warn { background: #E8A848; }
+  .badge.ok { background: #5BB88A; }
+  .ng-row { color: #C53030; }
+  .ok-row { color: #2F855A; }
+  ul { padding-left: 20px; }
+  li { margin-bottom: 6px; font-size: 14px; }
+  .copy-btn {
+    background: var(--primary); color: white; border: none; padding: 8px 16px;
+    border-radius: 6px; font-size: 13px; cursor: pointer; float: right; transition: background 0.2s;
+  }
+  .copy-btn:hover { background: var(--primary-dark); }
+  .stars { color: #D69E2E; letter-spacing: 2px; }
+  .comparison-table .ng { background: #FFF5F5; }
+  .comparison-table .ok { background: #F0FFF4; }
+
+  /* Mindmap */
+  #mindmap-svg { width: 100%; height: 750px; background: white; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .mm-link { fill: none; stroke: var(--primary-light); stroke-width: 1.8; }
+  .mm-node circle { fill: var(--primary); stroke: white; stroke-width: 2; }
+  .mm-node text { font-size: 13px; fill: var(--text); font-family: inherit; }
+  .mm-node.mm-root circle { fill: var(--primary-dark); r: 8; }
+  .mm-node.mm-root text { font-size: 16px; font-weight: 700; }
+  .mm-node.mm-branch > circle { fill: var(--primary); }
+  .mm-node.mm-branch > text { font-weight: 600; font-size: 13.5px; }
+  .mm-node.mm-leaf circle { fill: var(--primary-light); }
+  .mm-node.mm-clickable { cursor: pointer; }
+  .mm-node.mm-collapsed circle { fill: var(--primary-dark); stroke: var(--primary-light); }
+
+  @media print {
+    .tabs, .copy-btn { display: none; }
+    .section { display: block !important; page-break-inside: avoid; }
+    body { background: white; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>キャリア面談分析レポート</h1>
+    <div class="meta">候補者: 片野様 ｜ 面談日: 2026年5月 ｜ 面談時間: 約23分</div>
+  </div>
+  <button class="copy-btn" onclick="window.print()">印刷 / PDF</button>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab(0)">マインドマップ</div>
+  <div class="tab" onclick="showTab(1)">志望動機・転職理由</div>
+  <div class="tab" onclick="showTab(2)">推薦文</div>
+  <div class="tab" onclick="showTab(3)">面接対策</div>
+  <div class="tab" onclick="showTab(4)">スキル・経験</div>
+  <div class="tab" onclick="showTab(5)">マッチング要素</div>
+</div>
+
+<div class="content">
+
+  <!-- TAB 0: マインドマップ -->
+  <div class="section active" id="sec-0">
+    <div class="card" style="padding:16px;">
+      <h3 style="margin-bottom:12px;">候補者マインドマップ <span style="font-size:12px;color:var(--text-sub);font-weight:400;">（クリックで展開/折りたたみ）</span></h3>
+      <svg id="mindmap-svg"></svg>
+    </div>
+  </div>
+
+  <!-- TAB 1: 志望動機・転職理由 -->
+  <div class="section" id="sec-1">
+    <div class="card">
+      <h3>転職理由（推奨表現）</h3>
+      <button class="copy-btn" onclick="copyText('transfer-reason')">コピー</button>
+      <div id="transfer-reason">
+        <div class="quote">結婚を機に、ライフステージの変化に合わせた働き方を実現したいと考えるようになりました。現職では経営支援や事業再生に携わり、クライアントの意思決定に深く関与するやりがいを感じてきました。一方で、将来的な家庭との両立を見据え、これまで培った経営支援のスキルを活かしながら、より持続可能な形で貢献できる環境を求めています。北海道への移住を予定しており、新しい拠点で腰を据えてキャリアを築いていきたいと考えております。</div>
+      </div>
+      <h4>NG表現との対比</h4>
+      <table class="comparison-table">
+        <tr><th style="width:50%">NG表現</th><th>推奨表現</th></tr>
+        <tr><td class="ng">事業再生がしんどい、倒産寸前の会社を見るのがつらい</td><td class="ok">事業再生の現場で培った経験を活かしつつ、より幅広い経営支援に関わりたい</td></tr>
+        <tr><td class="ng">残業が多すぎて限界、土日も働かされる</td><td class="ok">ライフステージの変化に対応できる持続可能な働き方を実現したい</td></tr>
+        <tr><td class="ng">今の会社には北海道に拠点がないから辞める</td><td class="ok">北海道を新たな生活拠点とし、地域に根ざした長期的なキャリアを築きたい</td></tr>
+        <tr><td class="ng">子供ができたら今の仕事は無理</td><td class="ok">将来の家庭計画も見据え、長期的に安定して貢献できる環境を重視しています</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>志望動機テンプレート（企業タイプ別）</h3>
+      <h4>コンサルファーム（バックオフィス兼務）</h4>
+      <button class="copy-btn" onclick="copyText('motiv-consul')">コピー</button>
+      <div id="motiv-consul">
+        <div class="quote">山田コンサルティンググループで5年間、システム業務改善と事業再生の両分野で経営支援に携わってまいりました。この経験を通じて、コンサルティング業務の全体像を理解するとともに、経営者の意思決定を財務・業務の両面から支援する力を身につけました。貴社のように少数精鋭で多角的なプロジェクトに取り組まれている環境において、コンサルタントの業務支援と人事・広報といった管理部門の両面から組織の成長に貢献できると考えております。クライアントワークの経験があるからこそ、現場の課題を理解した上でのバックオフィス支援が可能です。</div>
+      </div>
+      <h4>事業会社（経営企画・人事）</h4>
+      <button class="copy-btn" onclick="copyText('motiv-jigyou')">コピー</button>
+      <div id="motiv-jigyou">
+        <div class="quote">コンサルティングファームで5年間、事業再生やシステム業務改善に携わる中で、企業の経営課題に対して財務的視点から解決策を提示してまいりました。複数社を並行支援する中で、外部アドバイザーとしてではなく、1つの組織に深く入り込み、その成長に長期的に関わりたいという想いが強くなりました。人事領域にも強い関心があり、元来「人と接し、意思決定に立ち会う仕事」にやりがいを感じてきました。貴社においては、経営企画と人事の兼務という形で、組織づくりと事業成長の両方に貢献したいと考えております。</div>
+      </div>
+      <h4>北海道の中小企業（総合職）</h4>
+      <button class="copy-btn" onclick="copyText('motiv-hokkaido')">コピー</button>
+      <div id="motiv-hokkaido">
+        <div class="quote">大手コンサルティングファームで培った経営支援・財務分析・業務改善のスキルを、北海道の企業の成長に直接活かしたいと考えております。これまで外部のコンサルタントとして多くの中小企業を支援してまいりましたが、今後は1つの会社に腰を据え、日々の事業運営に深く関与しながら貢献していきたいと考えています。何でも幅広く取り組むことが得意であり、管理部門を中心に経営企画・人事・財務など多岐にわたる業務に柔軟に対応できます。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: 推薦文 -->
+  <div class="section" id="sec-2">
+    <div class="card">
+      <h3>推薦文（簡潔版 — メール用）</h3>
+      <button class="copy-btn" onclick="copyText('rec-brief')">コピー</button>
+      <div id="rec-brief">
+        <div class="quote">山田コンサルティンググループにて5年間、コンサルタントとして活躍されている片野様をご紹介いたします。システム業務改善（2年）および事業再生（2.5年）の両分野で実務経験を積まれ、財務分析・金融機関折衝・経営者との対話による意思決定支援に強みを持たれています。同志社大学ご出身で、基礎的な分析力・論理的思考力も高く、人事領域への関心も強いため、コンサルティング経験を活かしたバックオフィス業務や兼務ポジションで即戦力として活躍が期待できます。ご結婚に伴い北海道（札幌）への移住を予定されており、新天地で長期的にキャリアを築く意欲をお持ちです。</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>推薦文（詳細版 — 推薦状用）</h3>
+      <button class="copy-btn" onclick="copyText('rec-detail')">コピー</button>
+      <div id="rec-detail">
+        <h4>経歴サマリー</h4>
+        <p style="font-size:14px;margin-bottom:12px;">片野様は同志社大学ご卒業後、山田コンサルティンググループにて5年間コンサルタントとしてご活躍されています。入社後はシステム業務改善の領域で2年間、IT導入支援や業務フロー最適化に携わり、その後約2年半にわたり事業再生分野へ異動。資金繰り管理、金融機関との折衝、経営者への意思決定支援を2〜3社並行で担当されてきました。</p>
+        <h4>推薦ポイント</h4>
+        <ul>
+          <li><strong>マルチスキル</strong>: コンサルティングの中でもIT・業務改善と財務・事業再生という異なる領域を経験されており、幅広い視点での課題解決が可能です。</li>
+          <li><strong>対人力</strong>: 経営者との深い対話を通じた意思決定支援を日常的に行っており、クライアントの信頼を得るコミュニケーション力に優れています。</li>
+          <li><strong>柔軟性</strong>: 「何でもやりたい」「1つに集中より幅広く」という志向があり、少数精鋭の組織でのマルチロールに適性があります。</li>
+        </ul>
+        <h4>マッチ度の根拠</h4>
+        <p style="font-size:14px;margin-bottom:12px;">コンサルティング経験を持つ人材がバックオフィスに転向するケースは、現場理解に基づいた的確な業務支援が可能な点で、組織にとって大きな価値があります。人事への関心も高く、現職でも人事部から異動を打診された経験があることから、ポテンシャルも十分です。</p>
+        <h4>懸念点・フォロー事項</h4>
+        <ul>
+          <li>入社時期は来年夏以降を想定（北海道移住のタイミングに依存）。ただし、条件次第で半常駐型やリモート勤務の可能性も検討可能</li>
+          <li>年収は500万円を目安に検討されていますが、現職の給与水準からは低下を許容されています</li>
+          <li>「専門性の軸が1本ではない」という自己認識があり、本人も方向性を模索中。兼務ポジションや幅広い役割の提示が効果的</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: 面接対策 -->
+  <div class="section" id="sec-3">
+    <div class="card">
+      <h3>想定質問と回答の方向性</h3>
+      <button class="copy-btn" onclick="copyText('qa-table')">コピー</button>
+      <div id="qa-table">
+        <table>
+          <tr><th style="width:5%">#</th><th style="width:35%">想定質問</th><th>回答の方向性</th></tr>
+          <tr><td>1</td><td>転職を考えたきっかけを教えてください。</td><td>結婚を機にライフプランを見直した。北海道移住の計画があり、新たな拠点で持続可能なキャリアを築きたい。事業再生で培った経験を前向きに活かしたいという動機を強調する。</td></tr>
+          <tr><td>2</td><td>なぜ事業再生からキャリアチェンジしたいのですか？</td><td>事業再生のやりがいは感じつつも、IT・業務改善の経験も含め幅広いスキルを活かせる環境に挑戦したい。「逃げ」ではなく「活かす」方向であることを伝える。</td></tr>
+          <tr><td>3</td><td>山田コンサルティングでの具体的な実績は？</td><td>数字を交えて説明。事業再生支援の件数、資金繰り改善の成果、金融機関との折衝で合意に至った事例など。「2〜3社並行で支援」のマルチタスク力もアピール。</td></tr>
+          <tr><td>4</td><td>なぜ北海道なのですか？タイミングは？</td><td>夫の実家が北海道にあり、夫婦で相談の上で決めた生活拠点。来年夏以降を予定しているが、良い縁があればフレキシブルに対応可能。</td></tr>
+          <tr><td>5</td><td>コンサルから管理部門への転向に不安は？</td><td>むしろ現職で人事部から異動打診があったほど適性がある。コンサル経験があるからこそ、現場を理解した管理部門の運営ができる強みがある。</td></tr>
+          <tr><td>6</td><td>年収が下がることについてどう考えていますか？</td><td>年収の絶対額だけでなく、時間対価の効率性を重視。長期的に安定して働ける環境で、着実にスキルを積み上げていきたい。</td></tr>
+          <tr><td>7</td><td>将来的にどのようなキャリアを描いていますか？</td><td>兼務からスタートし、人事や経営企画のスキルを段階的に深めたい。会社の成長とともに自身の役割も広げていく、グラデーション型のキャリア形成を志向。</td></tr>
+          <tr><td>8</td><td>チームで仕事をする際に大切にしていることは？</td><td>相手の顔が見える関係性の中で仕事をすることを大切にしている。経営者と対話しながら意思決定に携わる中で、信頼関係の構築力を培ってきた。</td></tr>
+          <tr><td>9</td><td>事業再生の経験から学んだことは？</td><td>経営のリアルな現場（資金繰り、銀行折衝、経営者のプレッシャー）を間近で見てきた経験。危機的状況での冷静な判断力、数字に基づく意思決定の重要性を学んだ。</td></tr>
+          <tr><td>10</td><td>当社を志望される理由を教えてください。</td><td>企業ごとにカスタマイズ。少数精鋭なら「幅広く関われる環境に魅力」、人事系なら「人に関わる仕事への転向を実現できる」等。</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <h3>転職理由の伝え方</h3>
+      <h4>NGワード</h4>
+      <ul>
+        <li class="ng-row">「しんどい」「きつい」「限界」→ ネガティブな印象を与える</li>
+        <li class="ng-row">「お金がなくなっていく会社を見るのがつらい」→ 仕事への否定的感情に聞こえる</li>
+        <li class="ng-row">「残業が多すぎる」「土日も働かされる」→ 労働条件への不満ばかりに見える</li>
+        <li class="ng-row">「北海道に拠点がないから辞める」→ 消去法に聞こえる</li>
+      </ul>
+      <h4>推奨フレーズ</h4>
+      <ul>
+        <li class="ok-row">「ライフステージの変化に合わせたキャリア構築を目指している」</li>
+        <li class="ok-row">「培った経験を新しい形で活かしたい」</li>
+        <li class="ok-row">「北海道で地域に根ざした長期的なキャリアを築きたい」</li>
+        <li class="ok-row">「人事・管理部門で組織の成長に貢献したい」</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>経歴説明で気をつけるポイント</h3>
+      <ul>
+        <li>「軸がない」とネガティブに捉えず、「IT×財務×事業再生のクロスファンクショナルな経験」としてポジティブに打ち出す</li>
+        <li>事業再生の「しんどさ」に言及する場合は、成長実感とセットで語る</li>
+        <li>北海道移住の計画は明確に伝え、「腰を据えて長期的に働きたい」という意思を示す</li>
+        <li>人事への関心は「現職の人事部から異動打診を受けた」というエピソードで裏付ける</li>
+        <li>5年間在籍していることをポジティブに活用。短期離職ではなく、節目でのキャリアチェンジと位置づける</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>逆質問の候補</h3>
+      <ul>
+        <li>「御社の管理部門ではどのような役割が期待されていますか？」</li>
+        <li>「少数精鋭の中で、入社後のキャリアパスはどのように描けますか？」</li>
+        <li>「コンサル出身者が社内で活躍されている事例はありますか？」</li>
+        <li>「北海道拠点の今後の事業計画や組織拡大の方向性を教えてください」</li>
+        <li>「リモートワークやフレックスなど、働き方の柔軟性はどの程度ありますか？」</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>印象を良くするためのアドバイス</h3>
+      <ul>
+        <li><strong>「何でもやりたいタイプ」を強みに</strong>: 少数精鋭の組織での適性をアピール</li>
+        <li><strong>5年間のハードな現場経験</strong>: 事業再生をやり抜いた耐性と責任感を伝える</li>
+        <li><strong>北海道移住を前向きに</strong>: 「逃避」ではなく「前向きな選択」として語る</li>
+        <li><strong>年収にこだわらない姿勢</strong>: 好印象だが安売りしすぎず、提供できる価値を明確に</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- TAB 4: スキル・経験 -->
+  <div class="section" id="sec-4">
+    <div class="card">
+      <h3>職歴</h3>
+      <table>
+        <tr><th>期間</th><th>企業名</th><th>業界</th><th>職種</th><th>主な業務</th><th>実績・成果</th><th>習得スキル</th></tr>
+        <tr><td>2022〜2024<br>(約2年)</td><td>山田コンサルティンググループ</td><td>コンサルティング</td><td>コンサルタント</td><td>システム業務改善、IT導入支援、業務フロー改善</td><td>クライアント企業の業務効率化を複数PJで実施</td><td>IT導入支援・業務フロー設計・要件定義</td></tr>
+        <tr><td>2024〜現在<br>(約2.5年)</td><td>山田コンサルティンググループ</td><td>コンサルティング</td><td>コンサルタント</td><td>事業再生支援、資金繰り管理、金融機関対応、経営者の意思決定支援</td><td>2〜3社並行支援、金融機関との折衝で再建計画を合意に導く</td><td>財務分析・資金繰り・銀行折衝・経営者対話・危機対応</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>スキルサマリー</h3>
+      <table>
+        <tr><th style="width:25%">カテゴリ</th><th>スキル</th></tr>
+        <tr><td><span class="badge">業務スキル</span></td><td>経営コンサルティング・事業再生・財務分析・資金繰り管理・金融機関折衝・業務改善</td></tr>
+        <tr><td><span class="badge">技術スキル</span></td><td>IT導入支援・システム要件定義・業務フロー設計・数値分析</td></tr>
+        <tr><td><span class="badge">対人スキル</span></td><td>経営者との対話力・提案力・マルチタスク・ストレス耐性</td></tr>
+        <tr><td><span class="badge ok">学歴</span></td><td>同志社大学卒業</td></tr>
+        <tr><td><span class="badge">総経験</span></td><td>約5年（コンサルティング業界）</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 5: マッチング要素 -->
+  <div class="section" id="sec-5">
+    <div class="card">
+      <h3>求人マッチング要素</h3>
+      <table>
+        <tr><th style="width:25%">項目</th><th>内容</th></tr>
+        <tr><td>希望年収</td><td>500万円程度</td></tr>
+        <tr><td>最低年収</td><td>400万円台も検討可（北海道水準を許容）</td></tr>
+        <tr><td>希望勤務地</td><td>北海道・札幌（来年夏以降移住予定）。現在は大阪在住</td></tr>
+        <tr><td>希望業界</td><td>コンサルティング、事業会社（業界問わず）</td></tr>
+        <tr><td>希望職種</td><td>バックオフィス兼務（人事・広報・経営企画）、コンサルアシスタント、管理部門全般</td></tr>
+        <tr><td>NG条件</td><td><span class="badge warn">がっつりクライアントワーク</span><span class="badge warn">長時間残業・土日常態化</span><span class="badge warn">内向きのみの業務</span></td></tr>
+        <tr><td>勤務形態</td><td>対面勤務が好み（ただしリモートも検討可）。ワークライフバランス重視</td></tr>
+        <tr><td>入社希望時期</td><td>来年夏以降（2027年夏頃）。北海道移住のタイミングに合わせて</td></tr>
+        <tr><td>重視ポイント</td><td>①人と接する仕事 ②幅広い業務に関われる環境 ③持続可能な働き方 ④自立したキャリア構築</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>マッチ度が高い求人タイプ</h3>
+      <table>
+        <tr><th style="width:12%">優先度</th><th style="width:35%">求人タイプ</th><th>理由</th></tr>
+        <tr><td class="stars">★★★</td><td>コンサルファーム（バックオフィス兼務）</td><td>コンサル経験を活かせる・幅広い業務・現場理解あり</td></tr>
+        <tr><td class="stars">★★★</td><td>事業会社（経営企画・人事）</td><td>財務×人事のクロス経験・1社に深く関われる</td></tr>
+        <tr><td class="stars">★★☆</td><td>北海道の中小企業（管理部門）</td><td>勤務地マッチ・マルチロール適性・大手コンサル経験が希少価値</td></tr>
+        <tr><td class="stars">★☆☆</td><td>フルリモートのコンサル会社</td><td>移住前から稼働可能だが、対面を好む本人の志向とやや不一致</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(i) {
+  document.querySelectorAll('.tab').forEach((t,j) => t.classList.toggle('active', j===i));
+  document.querySelectorAll('.section').forEach((s,j) => s.classList.toggle('active', j===i));
+}
+function copyText(id) {
+  const text = document.getElementById(id).innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById(id).parentElement.querySelector('.copy-btn');
+    const o = btn.textContent; btn.textContent = 'コピーしました'; btn.style.background = '#5BB88A';
+    setTimeout(() => { btn.textContent = o; btn.style.background = ''; }, 1500);
+  });
+}
+
+// === D3 Mindmap ===
+const data = {
+  name: "片野様", children: [
+    { name: "現職：山田コンサルティンググループ", children: [
+      { name: "基本情報", children: [
+        { name: "職種: コンサルタント" },
+        { name: "在籍: 5年目（2022年4月〜）" },
+        { name: "学歴: 同志社大学卒業" }
+      ]},
+      { name: "業務①：システム業務改善（2年）", children: [
+        { name: "IT導入支援" },
+        { name: "業務フロー改善" },
+        { name: "システム要件定義の補助" }
+      ]},
+      { name: "業務②：事業再生（2.5年）", children: [
+        { name: "資金繰り管理", children: [
+          { name: "月次資金繰り表作成" },
+          { name: "銀行提出資料作成" }
+        ]},
+        { name: "金融機関対応", children: [
+          { name: "銀行折衝・融資調整" },
+          { name: "再建計画の合意形成" }
+        ]},
+        { name: "経営者との意思決定支援" },
+        { name: "2〜3社並行支援" }
+      ]},
+      { name: "業務の特徴", children: [
+        { name: "財務ベースのコンサルティング" },
+        { name: "クライアントワーク中心" },
+        { name: "残業多い・土日稼働あり" }
+      ]}
+    ]},
+    { name: "転職理由", children: [
+      { name: "直接的きっかけ", children: [
+        { name: "結婚を機にキャリア見直し" },
+        { name: "北海道（札幌）移住予定", children: [
+          { name: "来年夏以降" },
+          { name: "確度: 80%程度" }
+        ]},
+        { name: "現在は大阪在住" }
+      ]},
+      { name: "働き方の課題", children: [
+        { name: "残業が多い" },
+        { name: "土日も資金繰り作業" },
+        { name: "子育てとの両立が困難" }
+      ]},
+      { name: "心理的負荷", children: [
+        { name: "倒産寸前の会社をサポート" },
+        { name: "お金がなくなる状況を目の当たり" },
+        { name: "2〜3社並行のストレス" }
+      ]}
+    ]},
+    { name: "希望するキャリア", children: [
+      { name: "方向性", children: [
+        { name: "コンサルファームでアシスタント兼務" },
+        { name: "人事・広報への関心", children: [
+          { name: "現職人事部から異動打診あり" },
+          { name: "元々興味のある領域" }
+        ]},
+        { name: "バックオフィス（たまに客先）" }
+      ]},
+      { name: "重視する価値観", children: [
+        { name: "人と接する仕事" },
+        { name: "意思決定に立ち会える" },
+        { name: "幅広く関わりたい" },
+        { name: "自立したキャリア" }
+      ]},
+      { name: "キャリア戦略", children: [
+        { name: "年収アップより時間効率" },
+        { name: "分子（年収）÷分母（時間）の最適化" },
+        { name: "兼務→グラデーションで専門化" }
+      ]}
+    ]},
+    { name: "スキル・強み", children: [
+      { name: "コンサルティング", children: [
+        { name: "経営支援・事業再生" },
+        { name: "財務分析・数字で提案" },
+        { name: "金融機関折衝" }
+      ]},
+      { name: "業務改善", children: [
+        { name: "システム導入・IT活用" },
+        { name: "業務フロー最適化" }
+      ]},
+      { name: "ヒューマンスキル", children: [
+        { name: "経営者との対話力" },
+        { name: "マルチタスク" },
+        { name: "好奇心旺盛" }
+      ]}
+    ]},
+    { name: "希望条件", children: [
+      { name: "年収", children: [
+        { name: "希望: 500万円程度" },
+        { name: "現職より低下を許容" },
+        { name: "北海道水準も理解" }
+      ]},
+      { name: "勤務地", children: [
+        { name: "北海道・札幌" },
+        { name: "対面勤務が好み" },
+        { name: "リモートも検討可" }
+      ]},
+      { name: "働き方", children: [
+        { name: "ワークライフバランス重視" },
+        { name: "子育て両立可能" },
+        { name: "保育園利用予定" }
+      ]},
+      { name: "NG条件", children: [
+        { name: "がっつりクライアントワーク" },
+        { name: "長時間残業・土日常態化" },
+        { name: "内向きのみの仕事" }
+      ]}
+    ]},
+    { name: "家庭状況", children: [
+      { name: "結婚", children: [
+        { name: "最近結婚" },
+        { name: "夫も同業（コンサルタント）" }
+      ]},
+      { name: "移住計画", children: [
+        { name: "来年夏以降に北海道へ" },
+        { name: "夫の実家がある" },
+        { name: "大阪には双方縁がない" }
+      ]},
+      { name: "子供", children: [
+        { name: "現在はいない" },
+        { name: "将来的に希望あり" }
+      ]}
+    ]},
+    { name: "人物像", children: [
+      { name: "性格", children: [
+        { name: "何でもやりたいタイプ" },
+        { name: "1つに集中は飽きる" },
+        { name: "自立心が強い" }
+      ]},
+      { name: "価値観", children: [
+        { name: "自分のマイワールドを持ちたい" },
+        { name: "対等な関係性を求める" },
+        { name: "自力で生きていける力を重視" }
+      ]},
+      { name: "コミュニケーション", children: [
+        { name: "率直に話す" },
+        { name: "感覚も大事にする" },
+        { name: "柔軟に検討する姿勢" }
+      ]}
+    ]}
+  ]
+};
+
+const svg = d3.select("#mindmap-svg");
+const width = svg.node().getBoundingClientRect().width || 1100;
+const height = 750;
+svg.attr("viewBox", `0 0 ${width} ${height}`);
+
+const g = svg.append("g");
+
+// ズーム
+svg.call(d3.zoom().scaleExtent([0.3, 3]).on("zoom", (e) => g.attr("transform", e.transform)));
+
+const root = d3.hierarchy(data);
+root.x0 = height / 2;
+root.y0 = 100;
+
+// 初期状態: 3階層まで展開（depth 0,1,2,3 を表示、4以降は折りたたみ）
+root.descendants().forEach(d => {
+  if (d.depth >= 3 && d.children) { d._children = d.children; d.children = null; }
+});
+
+const treeLayout = d3.tree().nodeSize([22, 160]);
+
+function update(source) {
+  treeLayout(root);
+  const nodes = root.descendants();
+  const links = root.links();
+
+  // 上下位置調整
+  let minY = Infinity, maxY = -Infinity;
+  nodes.forEach(d => { if (d.x < minY) minY = d.x; if (d.x > maxY) maxY = d.x; });
+  const offsetX = height / 2 - (minY + maxY) / 2;
+  const offsetY = 120;
+
+  // リンク
+  const link = g.selectAll(".mm-link").data(links, d => d.target.data.name + d.target.depth);
+  link.enter().append("path").attr("class", "mm-link")
+    .merge(link).transition().duration(400)
+    .attr("d", d => {
+      const sx = d.source.y + offsetY, sy = d.source.x + offsetX;
+      const tx = d.target.y + offsetY, ty = d.target.x + offsetX;
+      return `M${sx},${sy} C${(sx+tx)/2},${sy} ${(sx+tx)/2},${ty} ${tx},${ty}`;
+    });
+  link.exit().remove();
+
+  // ノード
+  const node = g.selectAll(".mm-node").data(nodes, d => d.data.name + d.depth);
+  const nodeEnter = node.enter().append("g").attr("class", d => {
+    let c = "mm-node";
+    if (d.depth === 0) c += " mm-root";
+    else if (d.depth === 1) c += " mm-branch";
+    else if (!d.children && !d._children) c += " mm-leaf";
+    if (d.children || d._children) c += " mm-clickable";
+    if (d._children) c += " mm-collapsed";
+    return c;
+  });
+  nodeEnter.append("circle").attr("r", d => d.depth === 0 ? 8 : d.depth === 1 ? 6 : 4);
+  nodeEnter.append("text").attr("dy", d => d.depth === 0 ? -14 : 4)
+    .attr("x", d => d.depth === 0 ? 0 : 12)
+    .attr("text-anchor", d => d.depth === 0 ? "middle" : "start")
+    .text(d => d.data.name);
+
+  const nodeUpdate = nodeEnter.merge(node);
+  nodeUpdate.transition().duration(400)
+    .attr("transform", d => `translate(${d.y + offsetY},${d.x + offsetX})`);
+  nodeUpdate.attr("class", d => {
+    let c = "mm-node";
+    if (d.depth === 0) c += " mm-root";
+    else if (d.depth === 1) c += " mm-branch";
+    else if (!d.children && !d._children) c += " mm-leaf";
+    if (d.children || d._children) c += " mm-clickable";
+    if (d._children) c += " mm-collapsed";
+    return c;
+  });
+  node.exit().remove();
+
+  // クリックで展開/折りたたみ
+  nodeUpdate.on("click", (event, d) => {
+    if (d._children) { d.children = d._children; d._children = null; }
+    else if (d.children) { d._children = d.children; d.children = null; }
+    g.selectAll(".mm-node").remove();
+    g.selectAll(".mm-link").remove();
+    update(d);
+  });
+}
+
+update(root);
+
+// 初期位置を中央寄せ
+setTimeout(() => {
+  const bbox = g.node().getBBox();
+  const s = Math.min(width / (bbox.width + 60), height / (bbox.height + 60), 1);
+  const tx = (width - bbox.width * s) / 2 - bbox.x * s;
+  const ty = (height - bbox.height * s) / 2 - bbox.y * s;
+  svg.transition().duration(500).call(
+    d3.zoom().scaleExtent([0.3, 3]).on("zoom", (e) => g.attr("transform", e.transform))
+      .transform, d3.zoomIdentity.translate(tx, ty).scale(s)
+  );
+}, 500);
+</script>
+</body>
+</html>
